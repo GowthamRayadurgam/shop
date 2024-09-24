@@ -1,0 +1,39 @@
+## Creating Initial setup Pipeline
+trigger: none
+
+pool:
+  name: 'adoagent'
+
+stages:
+- stage: ACRcreation
+  jobs:
+  - job: RSGcreation
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'subscription-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az group create --name ADOResourceGroup --location eastus'
+
+  - job: ACRcreation
+    dependsOn: RSGcreation
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'subscription-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az acr create --name adoacr15121996 --resource-group ADOResourceGroup --sku Standard --location eastus --admin-enabled true'
+
+  - job: storageAccountCreation
+    dependsOn: RSGcreation
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'subscription-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az storage account create --name terraformbackend15121995 --resource-group ADOResourceGroup --sku Standard_LRS --location eastus'
+
+        

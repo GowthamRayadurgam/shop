@@ -1,0 +1,108 @@
+parameters:
+  - name: azuresubscription
+    type: string
+    default: subscription-service-connection
+  
+  - name: acrrepo
+    type: string
+    default: Terraform-Acr
+
+
+jobs:
+- job: "Build_app_with_MVN_test"
+  steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '10.x'
+    displayName: 'Install Node.js'
+
+  - script: |
+      cd cart/
+      npm install
+    displayName: 'npm install build and test'
+  
+
+
+  # - task: Npm@1
+  #   inputs:
+  #     command: 'custom'
+  #     workingDir: 'cart/package.json'
+  #     customCommand: 'npm audit'
+
+- job: "Vulnaribility_check"
+  steps:
+  - task: trivy@1
+    inputs:
+      version: 'latest'
+      debug: true
+      path: 'apps/cart/package.json'
+      exitCode: '0'
+      devMode: true
+      options: '--format table'
+  dependsOn: 'Build_app_with_MVN_test'
+
+
+
+- job: sonarqube
+  steps:
+   - task: SonarQubePrepare@6
+     inputs:
+       SonarQube: 'sonarqube'
+       scannerMode: 'CLI'
+       configMode: 'manual'
+       cliProjectKey: 'shopcart'
+       cliProjectName: 'shopcart'
+       cliSources: '.'
+       extraProperties: |
+         # Additional properties that will be passed to the scanner, 
+         # Put one key=value per line, example:
+         # sonar.exclusions=**/*.bin
+         sonar.java.binaries=.
+   - task: SonarQubeAnalyze@6
+     inputs:
+       jdkversion: 'JAVA_HOME'
+
+
+   - task: SonarQubePublish@6
+     inputs:
+       pollingTimeoutSec: '300'
+          
+  dependsOn: 'Build_app_with_MVN_test'
+
+
+
+- job: "Build_and_Push_cart"
+  displayName: "Build_and_Push_cart"
+  steps:
+  - task: Docker@2
+    name: "Building_Cart"
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      repository: 'shopcart'
+      command: 'build'
+      Dockerfile: 'apps/cart/Dockerfile'
+      tags: $(Build.BuildId)    
+  - task: Docker@2
+    name: "Push_to_ACR"
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      repository: 'shopcart'
+      command: 'push'
+      tags: $(Build.BuildId)    
+  - task: Docker@2
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      command: 'login'  
+  - task: trivy@1
+    inputs:
+      version: 'latest'
+      debug: true
+      loginDockerConfig: true
+      image: shopacr15121996.azurecr.io/shopcart:$(Build.BuildId)
+      exitCode: '0'
+  
+#  dependsOn: ["Vulnaribility_check", "sonarqube"]
+
+
+
+

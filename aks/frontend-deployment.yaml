@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-app
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  minReadySeconds: 5 
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: adoacr15121996.azurecr.io/shopfrontend:92
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CATALOG_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-cm
+                  key: CATALOG_API_URL
+            - name: CART_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-cm
+                  key: CART_API_URL
+            - name: CHECKOUT_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-cm
+                  key: CHECKOUT_API_URL
+          ports:
+            - name: http
+              containerPort: 5030
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 350Mi
+            requests:
+              cpu: 100m
+              memory: 150Mi

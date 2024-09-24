@@ -1,0 +1,83 @@
+parameters:
+  - name: azuresubscription
+    type: string
+    default: subscription-service-connection
+  
+  - name: acrrepo
+    type: string
+    default: Terraform-Acr
+
+
+jobs:
+
+- job: "Vulnaribility_check"
+  steps:
+  - task: trivy@1
+    inputs:
+      version: 'latest'
+      debug: true
+      path: 'apps/checkout/Program.cs'
+      exitCode: '0'
+      devMode: true
+      options: '--format table'
+
+
+- job: sonarqube
+  steps:
+   - task: SonarQubePrepare@6
+     inputs:
+       SonarQube: 'sonarqube'
+       scannerMode: 'CLI'
+       configMode: 'manual'
+       cliProjectKey: 'shopcheckout'
+       cliProjectName: 'shopcheckout'
+       cliSources: '.'
+       extraProperties: |
+         # Additional properties that will be passed to the scanner, 
+         # Put one key=value per line, example:
+         # sonar.exclusions=**/*.bin
+         sonar.java.binaries=.
+   - task: SonarQubeAnalyze@6
+     inputs:
+       jdkversion: 'JAVA_HOME'
+   - task: SonarQubePublish@6
+     inputs:
+       pollingTimeoutSec: '300'
+          
+
+
+- job: "Build_and_Push_checkout"
+  displayName: "Build_and_Push_checkout"
+  steps:
+  - task: Docker@2
+    name: "Building_catalogue"
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      repository: 'shopcheckout'
+      command: 'build'
+      Dockerfile: 'apps/checkout/Dockerfile'
+      tags: $(Build.BuildId)
+      
+  - task: Docker@2
+    name: "Push_to_ACR"
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      repository: 'shopcheckout'
+      command: 'push'
+      tags: $(Build.BuildId)
+    
+  - task: Docker@2
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      command: 'login'  
+  - task: trivy@1
+    inputs:
+      version: 'latest'
+      debug: true
+      loginDockerConfig: true
+      image: adoacr15121996.azurecr.io/shopcheckout:$(Build.BuildId)
+      exitCode: '0'
+    
+
+  dependsOn: ['Vulnaribility_check', 'sonarqube']
+

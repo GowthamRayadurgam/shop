@@ -1,0 +1,16 @@
+<main>
+  <section class="cart-indicator">
+    <app-cart-indicator></app-cart-indicator>
+  </section>
+  <a [routerLink]="['/']">
+    <header class="brand-name">
+      <button mat-mini-fab color="primary" aria-label="Packt Store">
+        <mat-icon>home</mat-icon>
+      </button>
+      Pack Store
+    </header>
+  </a>
+  <section class="content">
+    <router-outlet></router-outlet>
+  </section>
+</main>

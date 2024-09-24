@@ -1,0 +1,11 @@
+.*.swp
+.DS_Store
+*-private.*
+vendor/
+Gopkg.lock
+**/terraform.tfstate
+**/.terraform
+**/.terraform.lock.hcl
+**/terraform.tfstate.backup
+**/*.pem
+**/*.pfx

@@ -1,0 +1,21 @@
+trigger: none
+
+pool:
+  name: ado-agent
+
+stages:
+ - stage: "Cart_build_and_push"
+   jobs:
+   - template: build-templates/cart.yaml
+
+ - stage: "Catalogue_build_and_push"
+   jobs:
+   - template: build-templates/catalogue.yml
+
+ - stage: "checkout_build_and_push"
+   jobs:
+   - template: build-templates/checkout.yml
+
+ - stage: "frontend_build_and_push"
+   jobs:
+   - template: build-templates/frontend.yml

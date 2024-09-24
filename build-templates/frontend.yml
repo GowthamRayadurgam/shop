@@ -1,0 +1,83 @@
+parameters:
+  - name: azuresubscription
+    type: string
+    default: subscription-service-connection
+  
+  - name: acrrepo
+    type: string
+    default: Terraform-Acr
+
+
+jobs:
+
+- job: "Vulnaribility_check"
+  steps:
+  - task: trivy@1
+    inputs:
+      version: 'latest'
+      debug: true
+      path: 'apps/frontend/package.json'
+      exitCode: '0'
+      devMode: true
+      options: '--format table'
+
+
+- job: sonarqube
+  steps:
+   - task: SonarQubePrepare@6
+     inputs:
+       SonarQube: 'sonarqube'
+       scannerMode: 'CLI'
+       configMode: 'manual'
+       cliProjectKey: 'shopfrontend'
+       cliProjectName: 'shopfrontend'
+       cliSources: '.'
+       extraProperties: |
+         # Additional properties that will be passed to the scanner, 
+         # Put one key=value per line, example:
+         # sonar.exclusions=**/*.bin
+         sonar.java.binaries=.
+   - task: SonarQubeAnalyze@6
+     inputs:
+       jdkversion: 'JAVA_HOME'
+   - task: SonarQubePublish@6
+     inputs:
+       pollingTimeoutSec: '300'
+          
+
+
+- job: "Build_and_Push_frontend"
+  displayName: "Build_and_Push_frontend"
+  steps:
+  - task: Docker@2
+    name: "Building_catalogue"
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      repository: 'shopfrontend'
+      command: 'build'
+      Dockerfile: 'apps/frontend/Dockerfile'
+      tags: $(Build.BuildId)
+      
+  - task: Docker@2
+    name: "Push_to_ACR"
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      repository: 'shopfrontend'
+      command: 'push'
+      tags: $(Build.BuildId)
+    
+  - task: Docker@2
+    inputs:
+      containerRegistry: 'Terraform-Acr'
+      command: 'login'  
+  - task: trivy@1
+    inputs:
+      version: 'latest'
+      debug: true
+      loginDockerConfig: true
+      image: acr1512.azurecr.io/shopfrontend:$(Build.BuildId)
+      exitCode: '0'
+    
+
+  dependsOn: ['Vulnaribility_check', 'sonarqube']
+
